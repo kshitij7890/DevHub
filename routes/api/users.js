@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const gravatar=require('gravatar');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const config = require('config');
 const { check, validationResult } = require('express-validator');//check documentation of express validator
 
 const User = require('../../models/User');
@@ -61,7 +63,20 @@ try{
 
   //return jsonwebtoken-->to get logged in right away when user registers in frontend
 
-   res.send('User registered');
+   const payload={
+     user:{
+       id:user.id//no need of _id ....id will work fine
+     }
+   }
+
+   jwt.sign(
+     payload,
+     config.get('jwtSecret'),
+     {expiresIn: 360000},
+     (err,token) => {
+       if(err) throw err;
+       res.json({token});
+     });
 
 }catch(err){
   console.log(err.message);
