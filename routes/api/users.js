@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const gravatar=require('gravatar');
+const bcrypt = require('bcryptjs');
 const { check, validationResult } = require('express-validator');//check documentation of express validator
+
+const User = require('../../models/User');
 
 // @route   POST api/users
 // @desc    Register user
@@ -15,13 +19,57 @@ router.post('/',[
     'Please enter a password with 6 or more characters'
   ).isLength({min:6})
 ],
-(req,res) => {
+async (req,res) => {
   //console.log(req.body);
   const errors = validationResult(req);
   if(!errors.isEmpty()){
     return res.status(400).json({errors : errors.array() });
   }
-  res.send('User route');
+
+const {name,email,password}=req.body;
+
+
+
+try{
+  //See if user exist
+  let user=await User.findOne({email:email});//chk//we use await because of async...makes it easy
+  if(user){
+    return res.status(400).json({errors:[{msg:'User already exists'}]});
+  }
+
+  //get user's gravatar
+  const avatar=gravatar.url(email,{
+    s:'200',
+    r:'pg',
+    d:'mm'//gives default user icon
+  })
+
+  user=new User({//this just creates a new instance to save it first we encrypt password then user.save()
+    name,
+    email,
+    avatar,
+    password
+  });
+
+
+  //encrypt password
+  const salt = await bcrypt.genSalt(10);
+
+  user.password=await bcrypt.hash(password, salt);
+
+  await user.save();//wherever there is a promise use await
+
+  //return jsonwebtoken-->to get logged in right away when user registers in frontend
+
+   res.send('User registered');
+
+}catch(err){
+  console.log(err.message);
+  res.status(500).send('Server error');
+}
+
+
+
 }
 );
 
